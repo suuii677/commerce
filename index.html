@@ -1,0 +1,162 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Commerce</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 sticky top-0 z-10">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">AI Commerce</h1>
+            <div class="flex items-center space-x-4">
+                <div id="cart-count" class="bg-red-500 rounded-full px-2 py-1 text-sm">0</div>
+                <button id="cart-button" class="hover:underline">Cart</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-6">
+        <!-- AI Recommendations -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">AI-Powered Recommendations</h2>
+            <div id="recommendations" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+        </section>
+
+        <!-- Product Listing -->
+        <section>
+            <h2 class="text-2xl font-semibold mb-4">Products</h2>
+            <div id="products" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+        </section>
+    </main>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg max-w-md w-full">
+            <h2 class="text-xl font-semibold mb-4">Your Cart</h2>
+            <div id="cart-items"></div>
+            <div class="mt-4 flex justify-between">
+                <p class="font-semibold">Total: $<span id="cart-total">0</span></p>
+                <button id="close-cart" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample product data with unique images
+        const products = [
+            { id: 1, name: "Smart Speaker", price: 99.99, image: "https://via.placeholder.com/200?text=Smart+Speaker" },
+            { id: 2, name: "Wireless Earbuds", price: 49.99, image: "https://via.placeholder.com/200?text=Wireless+Earbuds" },
+            { id: 3, name: "Smart Watch", price: 199.99, image: "https://via.placeholder.com/200?text=Smart+Watch" },
+            { id: 4, name: "AI Camera", price: 149.99, image: "https://via.placeholder.com/200?text=AI+Camera" },
+        ];
+
+        let cart = [];
+
+        // Render products
+        function renderProducts() {
+            const productContainer = document.getElementById('products');
+            productContainer.innerHTML = products.map(product => `
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <img src="${product.image}" alt="${product.name}" class="w-full h-48 object-cover mb-4 rounded">
+                    <h3 class="text-lg font-semibold">${product.name}</h3>
+                    <p class="text-gray-600">$${product.price.toFixed(2)}</p>
+                    <button onclick="addToCart(${product.id})" class="bg-blue-600 text-white px-4 py-2 mt-2 rounded hover:bg-blue-700">Add to Cart</button>
+                </div>
+            `).join('');
+        }
+
+        // Render AI recommendations (mock)
+        function renderRecommendations() {
+            const recommendationContainer = document.getElementById('recommendations');
+            // Mock AI logic: recommend first two products
+            const recommended = products.slice(0, 2);
+            recommendationContainer.innerHTML = recommended.map(product => `
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <img src="${product.image}" alt="${product.name}" class="w-full h-48 object-cover mb-4 rounded">
+                    <h3 class="text-lg font-semibold">${product.name}</h3>
+                    <p class="text-gray-600">$${product.price.toFixed(2)}</p>
+                    <button onclick="addToCart(${product.id})" class="bg-blue-600 text-white px-4 py-2 mt-2 rounded hover:bg-blue-700">Add to Cart</button>
+                </div>
+            `).join('');
+        }
+
+        // Add to cart
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            cart.push(product);
+            updateCart();
+        }
+
+        // Update cart display
+        function updateCart() {
+            const cartCount = document.getElementById('cart-count');
+            const cartItems = document.getElementById('cart-items');
+            const cartTotal = document.getElementById('cart-total');
+            cartCount.textContent = cart.length;
+            cartItems.innerHTML = cart.map(item => `
+                <div class="flex justify-between mb-2">
+                    <span>${item.name}</span>
+                    <span>$${item.price.toFixed(2)}</span>
+                </div>
+            `).join('');
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            cartTotal.textContent = total.toFixed(2);
+        }
+
+        // Cart modal toggle
+        document.getElementById('cart-button').addEventListener('click', () => {
+            document.getElementById('cart-modal').classList.remove('hidden');
+        });
+        document.getElementById('close-cart').addEventListener('click', () => {
+            document.getElementById('cart-modal').classList.add('hidden');
+        });
+
+        // Initialize
+        renderProducts();
+        renderRecommendations();
+    </script>
+</body>
+</html>
