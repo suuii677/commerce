@@ -1,0 +1,226 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Commerce</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 sticky top-0 z-10">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">AI Commerce</h1>
+            <div class="flex items-center space-x-4">
+                <div id="cart-count" class="bg-red-500 rounded-full px-2 py-1 text-sm">0</div>
+                <button id="cart-button" class="hover:underline">Cart</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-6">
+        <!-- Banner Ad Above Recommendations -->
+        <section class="mb-8">
+            <div class="bg-gray-200 p-4 rounded-lg text-center">
+                <p class="text-gray-600">Advertisement</p>
+                <!-- Replace with your ad network script (e.g., Google AdSense, Amazon Native Shopping Ads) -->
+                <div id="banner-ad-1" class="w-full h-32 bg-gray-300 flex items-center justify-center">
+                    <p>728x90 Banner Ad Placeholder</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Recommendations -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">AI-Powered Recommendations</h2>
+            <div id="recommendations" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+        </section>
+
+        <!-- Product Listing with Sidebar Ad -->
+        <section class="flex flex-col lg:flex-row gap-6">
+            <div class="flex-1">
+                <h2 class="text-2xl font-semibold mb-4 cursor-pointer hover:underline" onclick="document.getElementById('products').scrollIntoView({ behavior: 'smooth' })">Products</h2>
+                <div id="products" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+            </div>
+            <!-- Sidebar Ad (visible on large screens) -->
+            <div class="hidden lg:block w-64">
+                <div class="bg-gray-200 p-4 rounded-lg">
+                    <p class="text-gray-600">Advertisement</p>
+                    <!-- Replace with your ad network script (e.g., Google AdSense, Amazon Native Shopping Ads) -->
+                    <div id="sidebar-ad-1" class="w-full h-96 bg-gray-300 flex items-center justify-center">
+                        <p>300x600 Sidebar Ad Placeholder</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer Ad -->
+    <footer class="bg-gray-200 p-4 mt-8">
+        <div class="container mx-auto text-center">
+            <p class="text-gray-600">Advertisement</p>
+            <!-- Replace with your ad network script (e.g., Google AdSense, Amazon Native Shopping Ads) -->
+            <div id="footer-ad-1" class="w-full h-24 bg-gray-300 flex items-center justify-center">
+                <p>728x90 Footer Ad Placeholder</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center jurídica-center">
+        <div class="bg-white p-6 rounded-lg max-w-md w-full">
+            <h2 class="text-xl font-semibold mb-4">Your Cart</h2>
+            <div id="cart-items"></div>
+            <div class="mt-4 flex justify-between">
+                <p class="font-semibold">Total: $<span id="cart-total">0</span></p>
+                <button id="close-cart" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample product data with Beats headphones, Samsung smartphones, and iPhone models
+        const products = [
+            { id: 1, name: "Beats Studio Pro", price: 349.99, image: "https://via.placeholder.com/200?text=Beats+Studio+Pro", amazonLink: "https://www.amazon.com/Beats-Studio-Pro-Personalized-Compatibility/dp/B0C8PR4W22" },
+            { id: 2, name: "Beats Fit Pro", price: 199.99, image: "https://via.placeholder.com/200?text=Beats+Fit+Pro", amazonLink: "https://www.amazon.com/Beats-Fit-Pro-Noise-Cancelling/dp/B09JRG7Z7K" },
+            { id: 3, name: "Beats Solo 4", price: 129.99, image: "https://via.placeholder.com/200?text=Beats+Solo+4", amazonLink: "https://www.amazon.com/Beats-Solo-Wireless-Headphones-Matte/dp/B0CZPLV566" },
+            { id: 4, name: "Beats Studio Buds Plus", price: 169.99, image: "https://via.placeholder.com/200?text=Beats+Studio+Buds+Plus", amazonLink: "https://www.amazon.com/dp/B0CDJN1DLR" },
+            { id: 5, name: "Beats Flex", price: 69.99, image: "https://via.placeholder.com/200?text=Beats+Flex", amazonLink: "https://www.amazon.com/Beats-Flex-Wireless-Earphones-Built/dp/B08L6ZYW21?th=1" },
+            { id: 6, name: "Samsung Galaxy S25 Ultra", price: 1299.99, image: "https://via.placeholder.com/200?text=Samsung+Galaxy+S25+Ultra", amazonLink: "https://www.amazon.com/Smartphone-Unlocked-Processor-Manufacturer-Warranty/dp/B0DP3G4GVQ" },
+            { id: 7, name: "Samsung Galaxy S25 Plus", price: 999.99, image: "https://via.placeholder.com/200?text=Samsung+Galaxy+S25+Plus", amazonLink: "https://www.amazon.com/Samsung-Galaxy-S25-Plus/dp/B0DP3H5K8L" },
+            { id: 8, name: "Samsung Galaxy S25", price: 799.99, image: "https://via.placeholder.com/200?text=Samsung+Galaxy+S25", amazonLink: "https://www.amazon.com/Samsung-Galaxy-S25/dp/B0DP3J7M9N" },
+            { id: 9, name: "Samsung Galaxy S25 Edge", price: 1099.99, image: "https://via.placeholder.com/200?text=Samsung+Galaxy+S25+Edge", amazonLink: "https://www.amazon.com/Samsung-Galaxy-S25-Edge/dp/B0DP3K8P0Q" },
+            { id: 10, name: "Samsung Galaxy Z Fold 6", price: 1899.99, image: "https://via.placeholder.com/200?text=Samsung+Galaxy+Z+Fold+6", amazonLink: "https://www.amazon.com/Samsung-Galaxy-Z-Fold-6/dp/B0CZL9N1R3" },
+            { id: 11, name: "Samsung Galaxy Z Flip 6", price: 1099.99, image: "https://via.placeholder.com/200?text=Samsung+Galaxy+Z+Flip+6", amazonLink: "https://www.amazon.com/Samsung-Galaxy-Z-Flip-6/dp/B0CZL8M2S4" },
+            { id: 12, name: "Samsung Galaxy S24 FE", price: 649.99, image: "https://via.placeholder.com/200?text=Samsung+Galaxy+S24+FE", amazonLink: "https://www.amazon.com/Samsung-Galaxy-S24-FE/dp/B0CZL7L3T5" },
+            { id: 13, name: "Samsung Galaxy A35 5G", price: 399.99, image: "https://via.placeholder.com/200?text=Samsung+Galaxy+A35+5G", amazonLink: "https://www.amazon.com/Samsung-Galaxy-A35-5G/dp/B0CZL6K4U6" },
+            { id: 14, name: "Samsung Galaxy A16 5G", price: 299.99, image: "https://via.placeholder.com/200?text=Samsung+Galaxy+A16+5G", amazonLink: "https://www.amazon.com/Samsung-Galaxy-A16-5G/dp/B0CZL5J5V7" },
+            { id: 15, name: "Samsung Galaxy A06", price: 199.99, image: "https://via.placeholder.com/200?text=Samsung+Galaxy+A06", amazonLink: "https://www.amazon.com/Samsung-Galaxy-A06/dp/B0CZL4H6W8" },
+            { id: 16, name: "iPhone 16 Pro Max", price: 1199.99, image: "https://via.placeholder.com/200?text=iPhone+16+Pro+Max", amazonLink: "https://www.amazon.com/Apple-iPhone-16-Pro-Max/dp/B0D7K3J8X9" },
+            { id: 17, name: "iPhone 16 Pro", price: 999.99, image: "https://via.placeholder.com/200?text=iPhone+16+Pro", amazonLink: "https://www.amazon.com/Apple-iPhone-16-Pro/dp/B0D7K2H7Y0" },
+            { id: 18, name: "iPhone 16", price: 799.99, image: "https://via.placeholder.com/200?text=iPhone+16", amazonLink: "https://www.amazon.com/Apple-iPhone-16/dp/B0D7K1G6Z1" },
+            { id: 19, name: "iPhone 16e", price: 699.99, image: "https://via.placeholder.com/200?text=iPhone+16e", amazonLink: "https://www.amazon.com/Apple-iPhone-16e/dp/B0D7K0F5A2" },
+            { id: 20, name: "iPhone 15 Pro Max", price: 1099.99, image: "https://via.placeholder.com/200?text=iPhone+15+Pro+Max", amazonLink: "https://www.amazon.com/Apple-iPhone-15-Pro-Max/dp/B0C9J8K9B3" },
+            { id: 21, name: "iPhone 15 Pro", price: 899.99, image: "https://via.placeholder.com/200?text=iPhone+15+Pro", amazonLink: "https://www.amazon.com/Apple-iPhone-15-Pro/dp/B0C9J7H8C4" },
+            { id: 22, name: "iPhone 15", price: 699.99, image: "https://via.placeholder.com/200?text=iPhone+15", amazonLink: "https://www.amazon.com/Apple-iPhone-15/dp/B0C9J6G7D5" },
+            { id: 23, name: "iPhone 14 Pro Max", price: 999.99, image: "https://via.placeholder.com/200?text=iPhone+14+Pro+Max", amazonLink: "https://www.amazon.com/Apple-iPhone-14-Pro-Max/dp/B0B8J5K6E6" },
+            { id: 24, name: "iPhone 14 Pro", price: 799.99, image: "https://via.placeholder.com/200?text=iPhone+14+Pro", amazonLink: "https://www.amazon.com/Apple-iPhone-14-Pro/dp/B0B8J4F5F7" },
+            { id: 25, name: "iPhone 14", price: 599.99, image: "https://via.placeholder.com/200?text=iPhone+14", amazonLink: "https://www.amazon.com/Apple-iPhone-14/dp/B0B8J3D4G8" }
+        ];
+
+        let cart = [];
+
+        // Render products
+        function renderProducts() {
+            const productContainer = document.getElementById('products');
+            productContainer.innerHTML = products.map(product => `
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <img src="${product.image}" alt="${product.name}" class="w-full h-48 object-cover mb-4 rounded">
+                    <h3 class="text-lg font-semibold">${product.name}</h3>
+                    <p class="text-gray-600">$${product.price.toFixed(2)}</p>
+                    <button onclick="addToCart(${product.id}, '${product.amazonLink}')" class="bg-blue-600 text-white px-4 py-2 mt-2 rounded hover:bg-blue-700">Add to Cart</button>
+                </div>
+            `).join('');
+        }
+
+        // Render AI recommendations (mock)
+        function renderRecommendations() {
+            const recommendationContainer = document.getElementById('recommendations');
+            // Mock AI logic: recommend first two products
+            const recommended = products.slice(0, 2);
+            recommendationContainer.innerHTML = recommended.map(product => `
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <img src="${product.image}" alt="${product.name}" class="w-full h-48 object-cover mb-4 rounded">
+                    <h3 class="text-lg font-semibold">${product.name}</h3>
+                    <p class="text-gray-600">$${product.price.toFixed(2)}</p>
+                    <button onclick="addToCart(${product.id}, '${product.amazonLink}')" class="bg-blue-600 text-white px-4 py-2 mt-2 rounded hover:bg-blue-700">Add to Cart</button>
+                </div>
+            `).join('');
+        }
+
+        // Add to cart and redirect to Amazon
+        function addToCart(productId, amazonLink) {
+            const product = products.find(p => p.id === productId);
+            cart.push(product);
+            updateCart();
+            console.log(`Attempting to redirect to Amazon: ${amazonLink}`);
+            try {
+                const newWindow = window.open(amazonLink, '_blank');
+                if (!newWindow) {
+                    console.error(`Failed to open Amazon link: ${amazonLink}. Pop-up blocker may be enabled.`);
+                }
+            } catch (e) {
+                console.error(`Error redirecting to Amazon: ${e.message}`);
+            }
+        }
+
+        // Update cart display
+        function updateCart() {
+            const cartCount = document.getElementById('cart-count');
+            const cartItems = document.getElementById('cart-items');
+            const cartTotal = document.getElementById('cart-total');
+            cartCount.textContent = cart.length;
+            cartItems.innerHTML = cart.map(item => `
+                <div class="flex justify-between mb-2">
+                    <span>${item.name}</span>
+                    <span>$${item.price.toFixed(2)}</span>
+                </div>
+            `).join('');
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            cartTotal.textContent = total.toFixed(2);
+        }
+
+        // Cart modal toggle
+        document.getElementById('cart-button').addEventListener('click', () => {
+            document.getElementById('cart-modal').classList.remove('hidden');
+        });
+        document.getElementById('close-cart').addEventListener('click', () => {
+            document.getElementById('cart-modal').classList.add('hidden');
+        });
+
+        // Initialize
+        renderProducts();
+        renderRecommendations();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f4a1d99c96c938',t:'MTc1MjUzMzk4NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f4a6e85e1fe0e6',t:'MTc1MjUzNDE5MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f4ac400f19c9b4',t:'MTc1MjUzNDQxMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f4affb5fe87ffd',t:'MTc1MjUzNDU2My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f4c1a028ff37a2',t:'MTc1MjUzNTI4NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd31/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f4e5586fc0e600',t:'MTc1MjUzNjc0OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
